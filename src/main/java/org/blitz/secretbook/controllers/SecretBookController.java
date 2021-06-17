@@ -1,8 +1,8 @@
 package org.blitz.secretbook.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -60,10 +60,90 @@ public class SecretBookController extends VBox {
         super();
     }
 
+    public void setStage(Stage stage) {
+        this.stage = stage;
+    }
+
     @FXML
     private void initialize() {
-        log.info("In initialize");
+        log.debug("In initialize");
         setupListView();
+    }
+
+    @FXML
+    private void openBook() {
+        leftStatus.setText("Select Book");
+        File file = fileChooser.showOpenDialog(stage);
+        if (file != null) {
+            labelBookPath.setText(file.getAbsolutePath());
+            leftStatus.setText("Book selected : " + file.getAbsolutePath());
+            loadFile(file);
+            this.buttonNewPage.setDisable(false);
+        } else {
+            leftStatus.setText("Not Selected");
+        }
+    }
+
+    @FXML
+    private void closeBook() {
+        leftStatus.setText("Closed Book");
+        labelBookPath.setText("Select Book");
+        this.book = new Book();
+        this.selectedPage = null;
+        this.buttonSave.setDisable(true);
+        this.buttonNewPage.setDisable(true);
+        this.mainContainer.getChildren().removeAll(this.mainContainer.getChildren());
+        this.updateListView();
+    }
+
+    @FXML
+    private void createNewBook() {
+        leftStatus.setText("Load Book!");
+        File file = fileChooser.showSaveDialog(stage);
+        if (file != null) {
+            try {
+                createNewFile(file);
+                loadFile(file);
+                this.buttonNewPage.setDisable(false);
+            } catch (IOException e) {
+                leftStatus.setText("Exception while creating file");
+            }
+            labelBookPath.setText(file.getAbsolutePath());
+        } else {
+            leftStatus.setText("Not Selected");
+        }
+    }
+
+    @FXML
+    private void addNewPage() {
+        leftStatus.setText("Added New Page");
+        Page page = new Page();
+        page.setLabel("Newly added page");
+        page.setPageType(PageType.TEXT);
+        TextPageData textPageData = new TextPageData();
+        textPageData.setPageData("");
+        page.setPageData(textPageData);
+        this.book.getPages().add(page);
+        this.buttonSave.setDisable(false);
+        this.updateListView();
+    }
+
+    @FXML
+    private void saveBook() {
+        log.debug("saveBook");
+        if (this.buttonSave.isDisabled()) return;
+        try {
+            objectMapper.writeValue(new File(this.labelBookPath.getText()), this.book);
+            this.buttonSave.setDisable(true);
+        } catch (IOException e) {
+            log.error("Exception while writing file ", e);
+            this.leftStatus.setText("Exception while writing file");
+        }
+    }
+
+    @FXML
+    private void exitApplication() {
+        Platform.exit();
     }
 
     private void setupListView() {
@@ -82,63 +162,6 @@ public class SecretBookController extends VBox {
 
     private void updateListView() {
         this.listView.setItems(FXCollections.observableList(this.book.getPages().stream().map(Page::getLabel).collect(Collectors.toList())));
-    }
-
-    @FXML
-    private void openBook(ActionEvent event) {
-        leftStatus.setText("Select Book");
-        File file = fileChooser.showOpenDialog(stage);
-        if (file != null) {
-            labelBookPath.setText(file.getAbsolutePath());
-            leftStatus.setText("Book selected : " + file.getAbsolutePath());
-            loadFile(file);
-            this.buttonNewPage.setDisable(false);
-        } else {
-            leftStatus.setText("Not Selected");
-        }
-    }
-
-    @FXML
-    private void closeBook(ActionEvent event) {
-        leftStatus.setText("Closed Book");
-        labelBookPath.setText("Select Book");
-        this.book = new Book();
-        this.selectedPage = null;
-        this.buttonSave.setDisable(true);
-        this.buttonNewPage.setDisable(true);
-        this.updateListView();
-    }
-
-    @FXML
-    private void createNewBook(ActionEvent event) {
-        leftStatus.setText("Load Book!");
-        File file = fileChooser.showSaveDialog(stage);
-        if (file != null) {
-            try {
-                createNewFile(file);
-                loadFile(file);
-                this.buttonNewPage.setDisable(false);
-            } catch (IOException e) {
-                leftStatus.setText("Exception while creating file");
-            }
-            labelBookPath.setText(file.getAbsolutePath());
-        } else {
-            leftStatus.setText("Not Selected");
-        }
-    }
-
-    @FXML
-    private void addNewPage(ActionEvent event) {
-        leftStatus.setText("Added New Page");
-        Page page = new Page();
-        page.setLabel("Newly added page");
-        page.setPageType(PageType.TEXT);
-        TextPageData textPageData = new TextPageData();
-        textPageData.setPageData("");
-        page.setPageData(textPageData);
-        this.book.getPages().add(page);
-        this.buttonSave.setDisable(false);
-        this.updateListView();
     }
 
     private void loadFile(File file) {
@@ -165,24 +188,6 @@ public class SecretBookController extends VBox {
         }
     }
 
-    private void createNewFile(File file) throws IOException {
-        if (file.createNewFile()) {
-            Book newBook = new Book();
-            objectMapper.writeValue(file, newBook);
-        }
-    }
-
-    @FXML
-    private void saveBook(ActionEvent event) {
-        try {
-            objectMapper.writeValue(new File(this.labelBookPath.getText()), this.book);
-            this.buttonSave.setDisable(true);
-        } catch (IOException e) {
-            log.error("Exception while writing file ", e);
-            this.leftStatus.setText("Exception while writing file");
-        }
-    }
-
     private FileChooser createFileChooser() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select Book");
@@ -190,7 +195,10 @@ public class SecretBookController extends VBox {
         return fileChooser;
     }
 
-    public void setStage(Stage stage) {
-        this.stage = stage;
+    private void createNewFile(File file) throws IOException {
+        if (file.createNewFile()) {
+            Book newBook = new Book();
+            objectMapper.writeValue(file, newBook);
+        }
     }
 }

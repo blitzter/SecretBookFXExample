@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.PROPERTY,
         property = "type")
 @JsonSubTypes({
         @JsonSubTypes.Type(value = MapPageData.class, name = "mapPageData"),
