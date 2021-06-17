@@ -3,14 +3,11 @@ package org.blitz.secretbook.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.cell.TextFieldListCell;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
@@ -39,7 +36,7 @@ public class SecretBookController extends VBox {
     public Page selectedPage;
 
     @FXML
-    public ListView listView;
+    public ListView<String> listView;
 
     @FXML
     public Label labelBookPath;
@@ -73,25 +70,18 @@ public class SecretBookController extends VBox {
         StringConverter<String> converter = new DefaultStringConverter();
         listView.setEditable(true);
         listView.setCellFactory(param -> new TextFieldListCell<>(converter));
-        listView.setOnEditCommit((EventHandler<ListView.EditEvent>) event -> {
-            this.book.getPages().get(event.getIndex()).setLabel((String) event.getNewValue());
+        listView.setOnEditCommit(event -> {
+            this.book.getPages().get(event.getIndex()).setLabel(event.getNewValue());
             this.buttonSave.setDisable(false);
             updateListView();
         });
         listView.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> {
-                    this.openPage((String) newValue);
-                }
+                (observable, oldValue, newValue) -> this.openPage(newValue)
         );
     }
 
     private void updateListView() {
         this.listView.setItems(FXCollections.observableList(this.book.getPages().stream().map(Page::getLabel).collect(Collectors.toList())));
-    }
-
-    @FXML
-    private void menuClicked(MouseEvent event) {
-        leftStatus.setText("MenuClicked");
     }
 
     @FXML
@@ -154,9 +144,6 @@ public class SecretBookController extends VBox {
     private void loadFile(File file) {
         try {
             this.book = objectMapper.readValue(file, Book.class);
-            this.book.getPages().forEach(page -> {
-                log.info("Page " + page.getLabel());
-            });
             updateListView();
         } catch (IOException e) {
             leftStatus.setText("Exception while reading file");
@@ -174,15 +161,15 @@ public class SecretBookController extends VBox {
     private void showSelectedPage() {
         this.mainContainer.getChildren().removeAll(this.mainContainer.getChildren());
         if (this.selectedPage.getPageType().equals(PageType.TEXT)) {
-            TextArea textArea = new TextArea(((TextPageData) (this.selectedPage.getPageData())).getPageData());
             this.mainContainer.getChildren().add(new UiTextPage(this));
         }
     }
 
     private void createNewFile(File file) throws IOException {
-        file.createNewFile();
-        Book newBook = new Book();
-        objectMapper.writeValue(file, newBook);
+        if (file.createNewFile()) {
+            Book newBook = new Book();
+            objectMapper.writeValue(file, newBook);
+        }
     }
 
     @FXML
